@@ -12,11 +12,22 @@ This template deploys a gateway that bundles multiple MCP servers behind a singl
 
 ## Included MCP Servers
 
+Hermes aggregator branch (`hermes-aggregator`): Xena defaults plus vendored brand/Xena stdio servers.
+
 | Server | Path | Description |
 |--------|------|-------------|
-| **Fetch** | `/servers/fetch/sse` | Fetches web content and converts it to clean markdown for LLM consumption |
-| **Memory** | `/servers/memory/sse` | Persistent knowledge graph for storing and retrieving structured information |
-| **Sequential Thinking** | `/servers/sequential-thinking/sse` | Dynamic problem-solving through reflective thought sequences |
+| **Fetch** | `/servers/fetch/mcp` | Web fetch → markdown |
+| **Memory** | `/servers/memory/mcp` | Knowledge graph at `/data/memory/memory.json` |
+| **Sequential Thinking** | `/servers/sequential-thinking/mcp` | Reflective thought sequences |
+| **odoo_readonly** | `/servers/odoo_readonly/mcp` | Xena Odoo read-only JSON-RPC |
+| **odoo_n8n** | `/servers/odoo_n8n/mcp` | Xena Odoo concierge (stdio; PORT unset) |
+| **wordpress-cmp** | `/servers/wordpress-cmp/mcp` | Compasivamente WordPress |
+| **wordpress-fpx** | `/servers/wordpress-fpx/mcp` | FPX WordPress |
+| **meta-ads** | `/servers/meta-ads/mcp` | Meta Graph ads |
+
+SSE is also at `/servers/<name>/sse`. Hermes on Railway should use Streamable HTTP (`/mcp`) over private DNS, not a public domain.
+
+Not in this image yet: AdLoop, GTM, luna-salud (Python / extra cred files). Metricool and n8n stay as their own HTTP URLs.
 
 ## Environment Variables
 

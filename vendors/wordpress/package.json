@@ -1,0 +1,10 @@
+{
+  "name": "wordpress-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WordPress REST MCP (Compasivamente + FPX entrypoints)",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "zod": "^3.23.8"
+  }
+}
