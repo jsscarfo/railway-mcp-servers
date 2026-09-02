@@ -16,33 +16,6 @@
       "command": "mcp-server-sequential-thinking",
       "args": [],
       "env": {}
-    },
-    "odoo_readonly": {
-      "command": "node",
-      "args": ["/opt/mcp/odoo_readonly/src/index.js"],
-      "env": {}
-    },
-    "odoo_n8n": {
-      "command": "node",
-      "args": ["/opt/mcp/bin/odoo-n8n-stdio.mjs"],
-      "env": {
-        "MCP_TRANSPORT": "stdio"
-      }
-    },
-    "wordpress-cmp": {
-      "command": "node",
-      "args": ["/opt/mcp/wordpress/index.js"],
-      "env": {}
-    },
-    "wordpress-fpx": {
-      "command": "node",
-      "args": ["/opt/mcp/wordpress/index-fpx.js"],
-      "env": {}
-    },
-    "meta-ads": {
-      "command": "node",
-      "args": ["/opt/mcp/meta-ads/index.js"],
-      "env": {}
     }
   }
 }
