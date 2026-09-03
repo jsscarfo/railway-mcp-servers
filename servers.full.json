@@ -50,7 +50,7 @@
       "env": {}
     },
     "google_tag_manager": {
-      "command": "python3",
+      "command": "/opt/mcp/pyvenv/bin/python3",
       "args": ["/opt/mcp/gtm/mcp_start.py"],
       "env": {
         "PYTHONUTF8": "1",
@@ -59,7 +59,7 @@
       }
     },
     "adloop": {
-      "command": "adloop",
+      "command": "/opt/mcp/pyvenv/bin/adloop",
       "args": [],
       "env": {}
     }

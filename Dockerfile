@@ -2,7 +2,7 @@ FROM ghcr.io/sparfenyuk/mcp-proxy:latest
 
 USER root
 
-RUN apk add --no-cache nodejs npm python3-dev gcc musl-dev linux-headers libffi-dev
+RUN apk add --no-cache nodejs npm python3-dev gcc musl-dev linux-headers libffi-dev py3-virtualenv
 
 RUN pip install --no-cache-dir mcp-server-fetch && \
     npm install -g \
@@ -25,8 +25,11 @@ RUN cd /opt/mcp/wordpress && npm install --omit=dev && \
     cd /opt/mcp/odoo_n8n && npm ci --omit=dev && \
     cd /opt/mcp/luna-salud && npm ci --omit=dev
 
-RUN pip install --no-cache-dir -r /opt/mcp/gtm/requirements.txt && \
-    pip install --no-cache-dir adloop
+# Keep AdLoop/GTM off the mcp-proxy interpreter. A newer `mcp` package
+# breaks mcp-server-fetch (`McpError` vs `MCPError`) and takes the gateway down.
+RUN python3 -m venv /opt/mcp/pyvenv && \
+    /opt/mcp/pyvenv/bin/pip install --no-cache-dir -r /opt/mcp/gtm/requirements.txt && \
+    /opt/mcp/pyvenv/bin/pip install --no-cache-dir adloop
 
 COPY --chmod=755 entrypoint.sh /entrypoint.sh
 COPY servers.json /default-servers.json
