@@ -24,10 +24,13 @@ Hermes aggregator branch (`hermes-aggregator`): Xena defaults plus vendored bran
 | **wordpress-cmp** | `/servers/wordpress-cmp/mcp` | Compasivamente WordPress |
 | **wordpress-fpx** | `/servers/wordpress-fpx/mcp` | FPX WordPress |
 | **meta-ads** | `/servers/meta-ads/mcp` | Meta Graph ads |
+| **luna-salud** | `/servers/luna-salud/mcp` | Clinical Luna Salud API (`cmp_reportes` only). In `servers.full.json`; enable in live `servers.json` after `LUNA_SALUD_API_KEY`. |
+| **google_tag_manager** | `/servers/google_tag_manager/mcp` | GTM. Same: enable after `GTM_CREDENTIALS_JSON` + `GTM_TOKEN_JSON`. |
+| **adloop** | `/servers/adloop/mcp` | Google Ads / GA4. Enable after `GOOGLE_ADS_ADC_JSON`. |
 
 SSE is also at `/servers/<name>/sse`. Hermes on Railway should use Streamable HTTP (`/mcp`) over private DNS, not a public domain.
 
-Not in this image yet: AdLoop, GTM, luna-salud (Python / extra cred files). Metricool and n8n stay as their own HTTP URLs.
+Do **not** copy AdLoop / GTM / luna into live `servers.json` until their Railway vars exist — a crashing stdio child takes down the whole mcp-proxy. Metricool and n8n stay as their own HTTP URLs (not this gateway). `memory` is the official `@modelcontextprotocol/server-memory` graph; Hermes should keep it disabled (see Hermes `docs/mcp-aggregator/memory.md`).
 
 ## Environment Variables
 

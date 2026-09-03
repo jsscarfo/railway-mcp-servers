@@ -43,6 +43,25 @@
       "command": "node",
       "args": ["/opt/mcp/meta-ads/index.js"],
       "env": {}
+    },
+    "luna-salud": {
+      "command": "node",
+      "args": ["/opt/mcp/luna-salud/index.js"],
+      "env": {}
+    },
+    "google_tag_manager": {
+      "command": "python3",
+      "args": ["/opt/mcp/gtm/mcp_start.py"],
+      "env": {
+        "PYTHONUTF8": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "GTM_QA_TOOLS": "1"
+      }
+    },
+    "adloop": {
+      "command": "adloop",
+      "args": [],
+      "env": {}
     }
   }
 }
