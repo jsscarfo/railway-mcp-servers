@@ -16,7 +16,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("gtm-fastmcp-server")
 
-from mcp.server import FastMCP
+from fastmcp import FastMCP
 
 # Initialize the MCP server
 mcp = FastMCP("gtm-fastmcp-server")
