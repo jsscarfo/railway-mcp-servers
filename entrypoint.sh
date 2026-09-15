@@ -6,8 +6,8 @@ MCP_CORS="${MCP_CORS_ORIGIN:-*}"
 
 # Fix volume permissions (non-fatal)
 if [ -d /data ]; then
-  mkdir -p /data/memory /data/secrets
-  chmod -R 777 /data/memory /data/secrets 2>/dev/null || true
+  mkdir -p /data/memory /data/secrets /data/adloop-home
+  chmod -R 777 /data/memory /data/secrets /data/adloop-home 2>/dev/null || true
 fi
 
 # Materialize JSON creds from Railway env onto the volume. Do not echo values.
@@ -15,9 +15,15 @@ umask 077
 write_secret_file() {
   _var_name="$1"
   _dest="$2"
-  eval "_val=\${${_var_name}-}"
-  if [ -n "$_val" ]; then
-    printf '%s' "$_val" > "$_dest"
+  # python3 so multiline YAML/JSON env vars are not truncated by eval
+  python3 -c 'import os, sys
+n, d = sys.argv[1], sys.argv[2]
+v = os.environ.get(n) or ""
+if not v:
+    raise SystemExit(0)
+open(d, "w", encoding="utf-8").write(v)
+' "$_var_name" "$_dest" || true
+  if [ -s "$_dest" ]; then
     chmod 600 "$_dest"
   fi
 }
@@ -26,6 +32,16 @@ write_secret_file GOOGLE_ADS_ADC_JSON /data/secrets/google-ads-adc.json
 if [ -f /data/secrets/google-ads-adc.json ]; then
   export GOOGLE_APPLICATION_CREDENTIALS=/data/secrets/google-ads-adc.json
 fi
+
+# AdLoop Ads/GA4 auth is OAuth token.json, not ADC. Write into the volume
+# home used by the adloop child (servers.json sets HOME=/data/adloop-home).
+# Do not export HOME here — that would change mcp-proxy and every other child.
+ADLOOP_HOME="/data/adloop-home"
+mkdir -p "${ADLOOP_HOME}/.adloop"
+chmod 700 "${ADLOOP_HOME}/.adloop" 2>/dev/null || true
+write_secret_file ADLOOP_TOKEN_JSON "${ADLOOP_HOME}/.adloop/token.json"
+write_secret_file ADLOOP_CREDENTIALS_JSON "${ADLOOP_HOME}/.adloop/credentials.json"
+write_secret_file ADLOOP_CONFIG_YAML "${ADLOOP_HOME}/.adloop/config.yaml"
 
 write_secret_file GTM_CREDENTIALS_JSON /data/secrets/gtm-credentials.json
 write_secret_file GTM_TOKEN_JSON /data/secrets/gtm-token.json

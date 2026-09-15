@@ -7,9 +7,10 @@ RUN apk add --no-cache nodejs npm python3-dev gcc musl-dev linux-headers libffi-
 RUN pip install --no-cache-dir mcp-server-fetch && \
     npm install -g \
     @modelcontextprotocol/server-memory \
-    @modelcontextprotocol/server-sequential-thinking
+    @modelcontextprotocol/server-sequential-thinking \
+    @mailgun/mcp-server@2.1.2
 
-RUN mkdir -p /data/memory /data/secrets /opt/mcp/bin && chmod 777 /data/memory /data/secrets
+RUN mkdir -p /data/memory /data/secrets /data/adloop-home /opt/mcp/bin && chmod 777 /data/memory /data/secrets /data/adloop-home
 
 COPY vendors/wordpress /opt/mcp/wordpress
 COPY vendors/meta-ads /opt/mcp/meta-ads

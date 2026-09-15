@@ -26,7 +26,8 @@ Hermes aggregator branch (`hermes-aggregator`): Xena defaults plus vendored bran
 | **meta-ads** | `/servers/meta-ads/mcp` | Meta Graph ads |
 | **luna-salud** | `/servers/luna-salud/mcp` | Clinical Luna Salud API (`cmp_reportes` only) |
 | **google_tag_manager** | `/servers/google_tag_manager/mcp` | GTM (creds from Railway JSON vars) |
-| **adloop** | `/servers/adloop/mcp` | Google Ads / GA4 (ADC from Railway JSON var) |
+| **adloop** | `/servers/adloop/mcp` | Google Ads / GA4 (OAuth `token.json` on `/data/adloop-home`, not ADC) |
+| **mailgun** | `/servers/mailgun/mcp` | Official `@mailgun/mcp-server` (stdio). Needs `MAILGUN_API_KEY`. `MAILGUN_DOMAIN` is the default sending domain for tool args; the MCP does not read it at startup. |
 
 SSE is also at `/servers/<name>/sse`. Hermes on Railway should use Streamable HTTP (`/mcp`) over private DNS, not a public domain.
 
