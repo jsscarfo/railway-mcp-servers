@@ -516,10 +516,10 @@ class GTMClient:
                     body=version_body
                 ).execute()
             except TypeError:
-            create_result = self.service.accounts().containers().workspaces().create_version(
-                parent=parent,
-                body=version_body
-            ).execute()
+                create_result = self.service.accounts().containers().workspaces().create_version(
+                    parent=parent,
+                    body=version_body
+                ).execute()
             
             container_version = create_result.get("containerVersion") or create_result
             version_path = container_version.get("path") or create_result.get("path")
