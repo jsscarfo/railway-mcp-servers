@@ -8,7 +8,8 @@ RUN pip install --no-cache-dir mcp-server-fetch && \
     npm install -g \
     @modelcontextprotocol/server-memory \
     @modelcontextprotocol/server-sequential-thinking \
-    @mailgun/mcp-server@2.1.2
+    @mailgun/mcp-server@2.1.2 \
+    @jkudish/jev-mcp@0.14.4
 
 RUN mkdir -p /data/memory /data/secrets /data/adloop-home /opt/mcp/bin && chmod 777 /data/memory /data/secrets /data/adloop-home
 
