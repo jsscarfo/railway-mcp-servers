@@ -75,6 +75,13 @@
       "command": "jev-mcp",
       "args": [],
       "env": {}
+    },
+    "metricool": {
+      "command": "mcp-remote",
+      "args": ["https://ai.metricool.com/mcp", "3334", "--transport", "http-only",
+               "--resource", "https://ai.metricool.com/mcp",
+               "--static-oauth-client-info", "@/data/secrets/metricool-client.json"],
+      "env": {"MCP_REMOTE_CONFIG_DIR": "/data/mcp-auth"}
     }
   }
 }

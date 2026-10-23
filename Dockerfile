@@ -9,9 +9,10 @@ RUN pip install --no-cache-dir mcp-server-fetch && \
     @modelcontextprotocol/server-memory \
     @modelcontextprotocol/server-sequential-thinking \
     @mailgun/mcp-server@2.1.2 \
-    @jkudish/jev-mcp@0.14.4
+    @jkudish/jev-mcp@0.14.4 \
+    mcp-remote@0.15.2
 
-RUN mkdir -p /data/memory /data/secrets /data/adloop-home /opt/mcp/bin && chmod 777 /data/memory /data/secrets /data/adloop-home
+RUN mkdir -p /data/memory /data/secrets /data/adloop-home /data/mcp-auth /opt/mcp/bin && chmod 777 /data/memory /data/secrets /data/adloop-home
 
 COPY vendors/wordpress /opt/mcp/wordpress
 COPY vendors/meta-ads /opt/mcp/meta-ads
