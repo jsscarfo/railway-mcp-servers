@@ -52,6 +52,18 @@ if [ -f /data/secrets/gtm-token.json ]; then
   export GTM_TOKEN_FILE=/data/secrets/gtm-token.json
 fi
 
+# Metricool (shared OAuth via mcp-remote). Client info is rewritten each boot;
+# tokens are seeded ONLY if absent, because mcp-remote rotates them on the volume.
+write_secret_file METRICOOL_CLIENT_INFO_JSON /data/secrets/metricool-client.json
+MR_DIR=/data/mcp-auth/mcp-remote-v1
+mkdir -p "${MR_DIR}"
+chmod 700 /data/mcp-auth "${MR_DIR}" 2>/dev/null || true
+# Cache key = md5("<server URL>|<--resource>") in mcp-remote 0.15.2
+MR_TOK="${MR_DIR}/5150c401017aa3b650730ae2c419b5b2_tokens.json"
+if [ ! -s "${MR_TOK}" ]; then
+  write_secret_file METRICOOL_TOKENS_JSON "${MR_TOK}"
+fi
+
 echo "Starting MCP Proxy Gateway"
 echo "  Port: ${PORT}"
 echo "  Config: ${CONFIG_FILE}"
