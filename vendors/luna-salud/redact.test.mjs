@@ -3,6 +3,8 @@ import {
   allowedToolNames,
   appointmentBody,
   dryRunResult,
+  parsePatientFormPdf,
+  pdfToolErrorText,
   redactVideoLinks,
   rescheduleBody,
   writesAreDryRun,
@@ -15,6 +17,7 @@ const redacted = redactVideoLinks({
 assert.equal(redacted.video_call_url, "[redacted-video-link]");
 assert.equal(redacted.nested[0].video_call_url, null);
 assert.equal(redacted.nested[1].video_call_url, "[redacted-video-link]");
+assert.equal(redactVideoLinks({ content_base64: "YQ==" }).content_base64, "YQ==");
 
 const preview = dryRunResult("POST", "/appointments", { telemedicine: true });
 assert.equal(preview.dry_run, true);
@@ -45,9 +48,47 @@ assert.deepEqual(allowedToolNames("booking"), [
 ]);
 assert.deepEqual(allowedToolNames("read"), ["list_staff", "list_services", "get_availability"]);
 assert.equal(allowedToolNames("read").includes("create_appointment"), false);
+assert.equal(allowedToolNames("read").includes("list_patient_forms"), false);
+assert.equal(allowedToolNames("read").includes("get_patient_form"), false);
+assert.equal(allowedToolNames("read").includes("get_patient_form_pdf"), false);
+assert.deepEqual(allowedToolNames("reportes"), [
+  "list_staff",
+  "list_services",
+  "get_availability",
+  "list_patient_forms",
+  "get_patient_form",
+  "get_patient_form_pdf",
+]);
 assert.equal(allowedToolNames("reportes").includes("list_patients"), false);
+assert.equal(allowedToolNames("reportes").includes("create_appointment"), false);
+assert.equal(allowedToolNames("booking").includes("list_patient_forms"), false);
 assert.equal(allowedToolNames("all").includes("list_appointments"), true);
 assert.equal(allowedToolNames("all").includes("create_appointment"), true);
+assert.equal(allowedToolNames("all").includes("list_patient_forms"), true);
+assert.equal(allowedToolNames("all").includes("get_patient_form"), true);
+assert.equal(allowedToolNames("all").includes("get_patient_form_pdf"), true);
+
+const pdf = parsePatientFormPdf('{"id":"f","content_base64":"YQ=="}');
+assert.equal(pdf.content_base64, "YQ==");
+assert.throws(() => parsePatientFormPdf("%PDF-1.4"), /not JSON/);
+try {
+  parsePatientFormPdf("%PDF-1.4");
+  assert.fail("pdf parse should throw");
+} catch (error) {
+  assert.equal(error.message.includes("%PDF"), false);
+}
+assert.equal(
+  pdfToolErrorText(new Error("Luna Salud API error: 404 Not Found")),
+  "Luna Salud API error: 404 Not Found",
+);
+assert.equal(
+  pdfToolErrorText(new Error('Unexpected token "%", "%PDF-1.4" is not valid JSON')),
+  "Luna Salud API error: patient form PDF could not be read",
+);
+assert.equal(
+  pdfToolErrorText(new Error(`content_base64 ${"A".repeat(120)}`)).includes("AAAA"),
+  false,
+);
 
 const previousLive = process.env.LUNA_ALLOW_LIVE_WRITES;
 delete process.env.LUNA_ALLOW_LIVE_WRITES;

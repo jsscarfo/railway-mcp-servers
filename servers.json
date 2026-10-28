@@ -62,7 +62,7 @@
       "command": "node",
       "args": ["/opt/mcp/luna-salud/index.js"],
       "env": {
-        "LUNA_TOOL_PROFILE": "read"
+        "LUNA_TOOL_PROFILE": "reportes"
       }
     },
     "google_tag_manager": {

@@ -11,6 +11,8 @@ import {
   allowedToolNames,
   appointmentBody,
   dryRunResult,
+  parsePatientFormPdf,
+  pdfToolErrorText,
   redactVideoLinks,
   rescheduleBody,
   writesAreDryRun,
@@ -32,7 +34,7 @@ const server = new Server({
   },
 });
 
-async function lunaRequest(endpoint, { method = "GET", params, body } = {}) {
+async function lunaRequest(endpoint, { method = "GET", params, body, safeParse = false } = {}) {
   if (!API_KEY) {
     throw new Error("LUNA_SALUD_API_KEY is not set");
   }
@@ -57,6 +59,9 @@ async function lunaRequest(endpoint, { method = "GET", params, body } = {}) {
   if (!response.ok) {
     throw new Error(`Luna Salud API error: ${response.status} ${response.statusText}`);
   }
+  if (safeParse) {
+    return parsePatientFormPdf(await response.text());
+  }
   return response.json();
 }
 
@@ -72,7 +77,7 @@ const dryRunSchema = {
 };
 
 const toolProfile = process.env.LUNA_TOOL_PROFILE || "all";
-if (!["read", "booking", "clinical", "all"].includes(toolProfile)) {
+if (!["read", "booking", "clinical", "reportes", "all"].includes(toolProfile)) {
   console.error("Unknown LUNA_TOOL_PROFILE; exposing the read tools only.");
 }
 const allowed = new Set(allowedToolNames(toolProfile));
@@ -222,6 +227,41 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
+        name: "list_patient_forms",
+        description: "List one patient's completed forms, newest first. Metadata only. Read only. Does not return drafts or answers.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            patientId: { type: "string" },
+            rowsPerPage: { type: "number" },
+            page: { type: "number", description: "0-indexed page" },
+          },
+          required: ["patientId"],
+        },
+      },
+      {
+        name: "get_patient_form",
+        description: "Get one completed form as JSON: each field's label, value (answer), order, selected options, and vitals. Read only. Signature images are not included.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "Completed form id from list_patient_forms" },
+          },
+          required: ["id"],
+        },
+      },
+      {
+        name: "get_patient_form_pdf",
+        description: "Get one completed form PDF as base64 in content_base64, not an expiring link. Read only. Do not paste the base64 into chat.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "Completed form id from list_patient_forms" },
+          },
+          required: ["id"],
+        },
+      },
+      {
         name: "create_appointment",
         description: "Book an in-person or online visit (POST /appointments, telemedicine true for online). Dry-run only unless LUNA_ALLOW_LIVE_WRITES=1. A real book notifies the provider in Luna and does not message the patient. The join link is redacted; a person copies it in the UI.",
         inputSchema: {
@@ -304,6 +344,24 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "get_availability":
         data = await lunaRequest("/availability", { params: args });
         break;
+      case "list_patient_forms":
+        data = await lunaRequest("/patient-forms", {
+          params: {
+            patientId: args.patientId,
+            rowsPerPage: args.rowsPerPage,
+            page: args.page,
+          },
+        });
+        break;
+      case "get_patient_form":
+        data = await lunaRequest("/patient-form", { params: { id: args.id } });
+        break;
+      case "get_patient_form_pdf":
+        data = await lunaRequest("/patient-form/pdf", {
+          params: { id: args.id },
+          safeParse: true,
+        });
+        break;
       case "create_appointment": {
         const body = appointmentBody(args);
         if (writesAreDryRun(args)) {
@@ -329,8 +387,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     return textResult(data);
   } catch (error) {
+    const message = request.params.name === "get_patient_form_pdf"
+      ? pdfToolErrorText(error)
+      : (error && error.message ? error.message : "Request failed");
     return {
-      content: [{ type: "text", text: `Error: ${error.message}` }],
+      content: [{ type: "text", text: `Error: ${message}` }],
       isError: true,
     };
   }

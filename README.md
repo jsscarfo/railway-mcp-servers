@@ -26,7 +26,7 @@ Hermes aggregator branch (`hermes-aggregator`): Xena defaults plus vendored bran
 | **meta-ads** | `/servers/meta-ads/mcp` | Meta Graph ads |
 | **luna-salud** | `/servers/luna-salud/mcp` | Clinical tools plus staff booking for the booking agent. Create and reschedule stay dry-run unless `LUNA_ALLOW_LIVE_WRITES=1`. Uses `LUNA_SALUD_API_KEY`. |
 | **luna-n8n** | `/servers/luna-n8n/mcp` | Staff reads only: list staff, list services, availability. Same `LUNA_SALUD_API_KEY`. |
-| **luna-reportes** | `/servers/luna-reportes/mcp` | Same three staff reads for reportes. No write tools. |
+| **luna-reportes** | `/servers/luna-reportes/mcp` | Staff reads plus completed-form reads (list, JSON, PDF base64). No write tools. |
 | **google_tag_manager** | `/servers/google_tag_manager/mcp` | GTM (creds from Railway JSON vars) |
 | **adloop** | `/servers/adloop/mcp` | Google Ads / GA4 (OAuth `token.json` on `/data/adloop-home`, not ADC) |
 | **mailgun** | `/servers/mailgun/mcp` | Official `@mailgun/mcp-server` (stdio). Needs `MAILGUN_API_KEY`. `MAILGUN_DOMAIN` is the default sending domain for tool args; the MCP does not read it at startup. |
