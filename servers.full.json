@@ -47,7 +47,23 @@
     "luna-salud": {
       "command": "node",
       "args": ["/opt/mcp/luna-salud/index.js"],
-      "env": {}
+      "env": {
+        "LUNA_TOOL_PROFILE": "all"
+      }
+    },
+    "luna-n8n": {
+      "command": "node",
+      "args": ["/opt/mcp/luna-salud/index.js"],
+      "env": {
+        "LUNA_TOOL_PROFILE": "read"
+      }
+    },
+    "luna-reportes": {
+      "command": "node",
+      "args": ["/opt/mcp/luna-salud/index.js"],
+      "env": {
+        "LUNA_TOOL_PROFILE": "read"
+      }
     },
     "google_tag_manager": {
       "command": "/opt/mcp/pyvenv/bin/python3",

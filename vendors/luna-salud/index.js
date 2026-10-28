@@ -6,9 +6,18 @@ import {
   McpError,
   ErrorCode,
 } from "@modelcontextprotocol/sdk/types.js";
+import { fileURLToPath } from "node:url";
+import {
+  allowedToolNames,
+  appointmentBody,
+  dryRunResult,
+  redactVideoLinks,
+  rescheduleBody,
+  writesAreDryRun,
+} from "./gaps.js";
 
 const API_KEY = process.env.LUNA_SALUD_API_KEY || "";
-if (!API_KEY) {
+if (!API_KEY && process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   console.error("LUNA_SALUD_API_KEY is not set; luna-salud will stay up but tools will error.");
 }
 
@@ -16,44 +25,64 @@ const BASE_URL = "https://account.lunahealth.app/api";
 
 const server = new Server({
   name: "luna-salud-mcp",
-  version: "1.0.0",
+  version: "1.1.0",
 }, {
   capabilities: {
     tools: {},
   },
 });
 
-async function lunaFetch(endpoint, params = {}) {
+async function lunaRequest(endpoint, { method = "GET", params, body } = {}) {
   if (!API_KEY) {
     throw new Error("LUNA_SALUD_API_KEY is not set");
   }
   const url = new URL(`${BASE_URL}${endpoint}`);
-  Object.keys(params).forEach(key => {
-    if (params[key] !== undefined) {
-      url.searchParams.append(key, String(params[key]));
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null && value !== "") {
+        url.searchParams.append(key, String(value));
+      }
     }
-  });
-
-  const response = await fetch(url.toString(), {
-    headers: {
-      "Authorization": `Bearer ${API_KEY}`,
-      "Content-Type": "application/json"
-    }
-  });
-
+  }
+  const headers = {
+    Authorization: `Bearer ${API_KEY}`,
+    Accept: "application/json",
+  };
+  let payload;
+  if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
+    payload = JSON.stringify(body);
+  }
+  const response = await fetch(url, { method, headers, body: payload });
   if (!response.ok) {
     throw new Error(`Luna Salud API error: ${response.status} ${response.statusText}`);
   }
-
-  return await response.json();
+  return response.json();
 }
+
+function textResult(data) {
+  return {
+    content: [{ type: "text", text: JSON.stringify(redactVideoLinks(data), null, 2) }],
+  };
+}
+
+const dryRunSchema = {
+  type: "boolean",
+  description: "Preview only. Defaults to true. Ignored unless LUNA_ALLOW_LIVE_WRITES=1.",
+};
+
+const toolProfile = process.env.LUNA_TOOL_PROFILE || "all";
+if (!["read", "booking", "clinical", "all"].includes(toolProfile)) {
+  console.error("Unknown LUNA_TOOL_PROFILE; exposing the read tools only.");
+}
+const allowed = new Set(allowedToolNames(toolProfile));
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
         name: "list_appointments",
-        description: "List appointments for the organization",
+        description: "List appointments for the organization. Read only.",
         inputSchema: {
           type: "object",
           properties: {
@@ -63,13 +92,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             patientId: { type: "string" },
             rowsPerPage: { type: "number", minimum: 5, maximum: 200 },
             page: { type: "number" },
-            sortDir: { type: "string", enum: ["asc", "desc"] }
-          }
-        }
+            sortDir: { type: "string", enum: ["asc", "desc"] },
+          },
+        },
       },
       {
         name: "list_patients",
-        description: "List patients in the organization",
+        description: "List patients in the organization. Read only. Do not dump the list into chat.",
         inputSchema: {
           type: "object",
           properties: {
@@ -77,31 +106,31 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             query: { type: "string", description: "Search query over name" },
             rowsPerPage: { type: "number", minimum: 5, maximum: 200 },
             page: { type: "number" },
-            sortDir: { type: "string", enum: ["asc", "desc"] }
-          }
-        }
+            sortDir: { type: "string", enum: ["asc", "desc"] },
+          },
+        },
       },
       {
         name: "get_patient",
-        description: "Get patient by ID",
+        description: "Get patient by ID, including the email on the chart. Read only. Does not change active status.",
         inputSchema: {
           type: "object",
           properties: {
-            id: { type: "string" }
+            id: { type: "string" },
           },
-          required: ["id"]
-        }
+          required: ["id"],
+        },
       },
       {
         name: "get_patient_charts",
-        description: "Get patient charts data",
+        description: "Get patient charts. Read only. Do not copy chart item text into chat.",
         inputSchema: {
           type: "object",
           properties: {
-            patientId: { type: "string" }
+            patientId: { type: "string" },
           },
-          required: ["patientId"]
-        }
+          required: ["patientId"],
+        },
       },
       {
         name: "get_biomarkers",
@@ -114,10 +143,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             end_date: { type: "string" },
             status: { type: "string", enum: ["ACCEPTABLE", "CRITICAL", "OPTIMAL", "IN_VERIFICATION"] },
             page: { type: "number" },
-            limit: { type: "number", minimum: 1, maximum: 100 }
+            limit: { type: "number", minimum: 1, maximum: 100 },
           },
-          required: ["patientId"]
-        }
+          required: ["patientId"],
+        },
       },
       {
         name: "get_lab_test_biomarkers",
@@ -125,10 +154,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: "object",
           properties: {
-            labTestId: { type: "string" }
+            labTestId: { type: "string" },
           },
-          required: ["labTestId"]
-        }
+          required: ["labTestId"],
+        },
       },
       {
         name: "list_lab_tests",
@@ -140,62 +169,169 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             page: { type: "number" },
             limit: { type: "number", minimum: 1, maximum: 100 },
             start_date: { type: "string" },
-            end_date: { type: "string" }
+            end_date: { type: "string" },
           },
-          required: ["patientId"]
-        }
+          required: ["patientId"],
+        },
       },
       {
         name: "get_webhook_config",
-        description: "Get webhook configuration",
+        description: "Get webhook configuration. Read only. Does not reveal the webhook secret and does not change settings.",
         inputSchema: {
           type: "object",
-          properties: {}
-        }
-      }
-    ]
+          properties: {},
+        },
+      },
+      {
+        name: "list_staff",
+        description: "List bookable providers and their ids for availability and booking. Read only. Do not paste the roster into chat; resolve one named provider.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            serviceId: { type: "string" },
+            rowsPerPage: { type: "number" },
+            page: { type: "number" },
+          },
+        },
+      },
+      {
+        name: "list_services",
+        description: "List services with duration and price. Read only. Does not change Cuenta → Servicios.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            staffId: { type: "string" },
+            bookable: { type: "boolean" },
+            rowsPerPage: { type: "number" },
+            page: { type: "number" },
+          },
+        },
+      },
+      {
+        name: "get_availability",
+        description: "List open slots for one provider and one service on one YYYY-MM-DD day. Read only.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            staffId: { type: "string" },
+            serviceId: { type: "string" },
+            date: { type: "string", description: "YYYY-MM-DD in the provider timezone" },
+            locationId: { type: "string" },
+          },
+          required: ["staffId", "serviceId", "date"],
+        },
+      },
+      {
+        name: "create_appointment",
+        description: "Book an in-person or online visit (POST /appointments, telemedicine true for online). Dry-run only unless LUNA_ALLOW_LIVE_WRITES=1. A real book notifies the provider in Luna and does not message the patient. The join link is redacted; a person copies it in the UI.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            patientId: { type: "string" },
+            staffId: { type: "string" },
+            serviceId: { type: "string" },
+            startTime: { type: "string", description: "ISO 8601 start from get_availability" },
+            locationId: { type: "string" },
+            telemedicine: { type: "boolean", description: "True for an online visit. Default false." },
+            dry_run: dryRunSchema,
+          },
+          required: ["patientId", "staffId", "serviceId", "startTime"],
+        },
+      },
+      {
+        name: "reschedule_appointment",
+        description: "Move an in-person visit, change its provider, or both (POST /appointments/{id}/reschedule). Dry-run only unless LUNA_ALLOW_LIVE_WRITES=1. Online visits cannot be moved here. notifyPatient true is refused.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            startTime: { type: "string" },
+            staffId: { type: "string" },
+            dry_run: dryRunSchema,
+          },
+          required: ["id"],
+        },
+      },
+    ].filter((tool) => allowed.has(tool.name)),
   };
 });
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
+    if (!allowed.has(request.params.name)) {
+      throw new McpError(ErrorCode.MethodNotFound, `Tool is not on this allowlist: ${request.params.name}`);
+    }
+    const args = request.params.arguments || {};
     let data;
     switch (request.params.name) {
       case "list_appointments":
-        data = await lunaFetch("/appointments", request.params.arguments);
+        data = await lunaRequest("/appointments", { params: args });
         break;
       case "list_patients":
-        data = await lunaFetch("/patients", request.params.arguments);
+        data = await lunaRequest("/patients", { params: args });
         break;
       case "get_patient":
-        data = await lunaFetch("/patient", request.params.arguments);
+        data = await lunaRequest("/patient", { params: args });
         break;
       case "get_patient_charts":
-        data = await lunaFetch("/patient-charts", request.params.arguments);
+        data = await lunaRequest("/patient-charts", { params: args });
         break;
       case "get_biomarkers":
-        data = await lunaFetch("/biomarkers", request.params.arguments);
+        data = await lunaRequest("/biomarkers", { params: args });
         break;
       case "get_lab_test_biomarkers":
-        data = await lunaFetch("/lab-test-biomarkers", request.params.arguments);
+        data = await lunaRequest("/lab-test-biomarkers", { params: args });
         break;
       case "list_lab_tests":
-        data = await lunaFetch("/lab-tests", request.params.arguments);
+        data = await lunaRequest("/lab-tests", { params: args });
         break;
       case "get_webhook_config":
-        data = await lunaFetch("/webhooks/config", request.params.arguments);
+        data = await lunaRequest("/webhooks/config");
         break;
+      case "list_staff":
+        data = await lunaRequest("/staff", { params: args });
+        break;
+      case "list_services":
+        data = await lunaRequest("/services", {
+          params: {
+            staffId: args.staffId,
+            bookable: args.bookable === undefined ? undefined : String(args.bookable),
+            rowsPerPage: args.rowsPerPage,
+            page: args.page,
+          },
+        });
+        break;
+      case "get_availability":
+        data = await lunaRequest("/availability", { params: args });
+        break;
+      case "create_appointment": {
+        const body = appointmentBody(args);
+        if (writesAreDryRun(args)) {
+          data = dryRunResult("POST", "/appointments", body);
+          break;
+        }
+        data = await lunaRequest("/appointments", { method: "POST", body });
+        break;
+      }
+      case "reschedule_appointment": {
+        const body = rescheduleBody(args);
+        const path = `/appointments/${encodeURIComponent(args.id)}/reschedule`;
+        if (writesAreDryRun(args)) {
+          data = dryRunResult("POST", path, body);
+          break;
+        }
+        data = await lunaRequest(path, { method: "POST", body });
+        break;
+      }
       default:
         throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${request.params.name}`);
     }
 
-    return {
-      content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
-    };
+    return textResult(data);
   } catch (error) {
     return {
       content: [{ type: "text", text: `Error: ${error.message}` }],
-      isError: true
+      isError: true,
     };
   }
 });
@@ -206,4 +342,9 @@ async function main() {
   console.error("Luna Salud MCP Server running on stdio");
 }
 
-main().catch(console.error);
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main().catch((error) => {
+    console.error(error.message);
+    process.exit(1);
+  });
+}
